@@ -1,6 +1,5 @@
 "use client";
 
-import ReactMarkdown from "react-markdown";
 import type { Message } from "@/app/page";
 
 interface ComedyOutputProps {
@@ -36,101 +35,79 @@ function getJokeStyle(label: string) {
   return { bg: "#FFF3E8", text: "#FF6B00", border: "#FFDDB8" };
 }
 
-function stripEmoji(text: string) {
-  return text.replace(/\p{Emoji}/gu, "").trim();
-}
+// Renders the raw text line-by-line — no section tracking, no refs, no state.
+function ContentRenderer({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
+  const lines = content.split("\n");
 
-function JokeCard({ label, content }: { label: string; content: string }) {
-  const colors = getJokeStyle(label);
+  const elements = lines.map((line, i) => {
+    // Section header: ### Title
+    if (/^###\s/.test(line)) {
+      const title = line.replace(/^###\s*/, "").trim();
+      if (!title) return null;
+      return (
+        <h3
+          key={i}
+          className="font-bold text-[#1A1A1A] text-base mt-5 mb-2 pb-1 border-b border-gray-100"
+        >
+          {title}
+        </h3>
+      );
+    }
+
+    // Joke card: **Label:** text
+    const jokeMatch = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
+    if (jokeMatch) {
+      const colors = getJokeStyle(jokeMatch[1]);
+      return (
+        <div
+          key={i}
+          className="rounded-xl border p-3 mb-2"
+          style={{ backgroundColor: colors.bg, borderColor: colors.border }}
+        >
+          <span
+            className="text-xs font-bold uppercase tracking-wide mb-1 block"
+            style={{ color: colors.text }}
+          >
+            {jokeMatch[1]}
+          </span>
+          <p className="text-[#1A1A1A] text-sm leading-relaxed">{jokeMatch[2]}</p>
+        </div>
+      );
+    }
+
+    // Bullet point: - text or * text
+    const bulletMatch = line.match(/^[-*]\s+(.+)/);
+    if (bulletMatch) {
+      // Strip any leading **bold** from bullet text (Next Moves uses **Bold:** desc)
+      const text = bulletMatch[1].replace(/^\*\*([^*]+)\*\*:?\s*/, "$1: ");
+      return (
+        <div key={i} className="flex items-start gap-2 text-sm text-gray-700 mb-1">
+          <span className="text-[#FF6B00] mt-0.5 flex-shrink-0 select-none">•</span>
+          <span>{text}</span>
+        </div>
+      );
+    }
+
+    // Horizontal rule — skip
+    if (/^---+$/.test(line.trim())) return null;
+
+    // Plain text (non-empty)
+    if (line.trim()) {
+      return (
+        <p key={i} className="text-sm text-gray-700 leading-relaxed mb-1">
+          {line}
+        </p>
+      );
+    }
+
+    return null;
+  });
+
   return (
-    <div
-      className="joke-card rounded-xl border p-3 mb-2 slide-up"
-      style={{ backgroundColor: colors.bg, borderColor: colors.border }}
-    >
-      <span
-        className="text-xs font-bold uppercase tracking-wide mb-1 block"
-        style={{ color: colors.text }}
-      >
-        {label}
-      </span>
-      <p className="text-[#1A1A1A] text-sm leading-relaxed">{content}</p>
-    </div>
-  );
-}
-
-function MarkdownContent({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
-  // Split by ### headers — use a plain let variable, NOT useRef, so it resets on every render
-  const sections = content.split(/(###[^\n]+)/);
-  let inJokesSection = false;
-
-  return (
-    <div className="space-y-1">
-      {sections.map((section, i) => {
-        if (section.startsWith("###")) {
-          // Strip emojis from header text before matching "jokes"
-          const cleanHeader = stripEmoji(section).toLowerCase();
-          inJokesSection = cleanHeader.includes("joke");
-          const title = stripEmoji(section.replace(/###\s*/, ""));
-          return (
-            <h3
-              key={i}
-              className="font-bold text-[#1A1A1A] text-base mt-5 mb-2 pb-1 border-b border-gray-100"
-            >
-              {title}
-            </h3>
-          );
-        }
-
-        if (inJokesSection && section.trim()) {
-          const lines = section.split("\n");
-          const cards = lines
-            .map((line) => {
-              const m = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
-              return m ? { label: m[1], content: m[2] } : null;
-            })
-            .filter(Boolean) as Array<{ label: string; content: string }>;
-
-          if (cards.length > 0) {
-            return (
-              <div key={i}>
-                {cards.map((card, j) => (
-                  <JokeCard key={j} label={card.label} content={card.content} />
-                ))}
-              </div>
-            );
-          }
-        }
-
-        if (section.trim()) {
-          return (
-            <div key={i} className="text-sm text-gray-700 leading-relaxed">
-              <ReactMarkdown
-                components={{
-                  ul: ({ children }) => (
-                    <ul className="space-y-1 my-2">{children}</ul>
-                  ),
-                  li: ({ children }) => (
-                    <li className="flex items-start gap-2">
-                      <span className="text-[#FF6B00] mt-0.5 flex-shrink-0">•</span>
-                      <span>{children}</span>
-                    </li>
-                  ),
-                  p: ({ children }) => <p className="mb-1">{children}</p>,
-                  strong: ({ children }) => (
-                    <strong className="font-semibold text-[#1A1A1A]">{children}</strong>
-                  ),
-                }}
-              >
-                {section}
-              </ReactMarkdown>
-            </div>
-          );
-        }
-
-        return null;
-      })}
+    <div className="pb-6">
+      {elements}
       {isStreaming && (
-        <span className="inline-block w-0.5 h-4 bg-[#FF6B00] animate-pulse ml-0.5" />
+        <span className="inline-block w-0.5 h-4 bg-[#FF6B00] animate-pulse ml-0.5 align-middle" />
       )}
     </div>
   );
@@ -141,28 +118,18 @@ export default function ComedyOutput({
   streamingContent,
   streaming,
 }: ComedyOutputProps) {
-  const assistantMessages = messages.filter((m) => m.role === "assistant");
-  const lastAssistant = assistantMessages[assistantMessages.length - 1];
-
   if (streaming) {
-    return (
-      <div className="pb-4">
-        {streamingContent ? (
-          <MarkdownContent content={streamingContent} isStreaming />
-        ) : (
-          <LoadingState />
-        )}
-      </div>
+    return streamingContent ? (
+      <ContentRenderer content={streamingContent} isStreaming />
+    ) : (
+      <LoadingState />
     );
   }
 
-  if (!lastAssistant) return null;
+  const lastAssistant = messages.filter((m) => m.role === "assistant").at(-1);
+  if (!lastAssistant?.content) return null;
 
-  return (
-    <div className="pb-4">
-      <MarkdownContent content={lastAssistant.content} />
-    </div>
-  );
+  return <ContentRenderer content={lastAssistant.content} />;
 }
 
 function LoadingState() {

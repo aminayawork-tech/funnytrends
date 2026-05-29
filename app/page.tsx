@@ -18,6 +18,7 @@ export default function Home() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
   const [currentStream, setCurrentStream] = useState("");
+  const [error, setError] = useState("");
   const outputRef = useRef<HTMLDivElement>(null);
 
   const hasContent = messages.length > 0 || streaming;
@@ -38,6 +39,7 @@ export default function Home() {
 
     setStreaming(true);
     setCurrentStream("");
+    setError("");
 
     try {
       const res = await fetch("/api/generate", {
@@ -50,6 +52,11 @@ export default function Home() {
         }),
       });
 
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error || `Error ${res.status}`);
+        return;
+      }
       if (!res.body) return;
 
       const reader = res.body.getReader();
@@ -96,6 +103,7 @@ export default function Home() {
     setActiveTopic("");
     setMessages([]);
     setCurrentStream("");
+    setError("");
   };
 
   useEffect(() => {
@@ -105,7 +113,7 @@ export default function Home() {
   }, [currentStream, streaming]);
 
   return (
-    <div className="flex flex-col min-h-screen max-w-2xl mx-auto">
+    <div className="flex flex-col h-screen max-w-2xl mx-auto">
       <Header onReset={hasContent ? handleReset : undefined} />
 
       <main className="flex-1 flex flex-col px-4 pb-4">
@@ -143,11 +151,17 @@ export default function Home() {
               ref={outputRef}
               className="flex-1 overflow-y-auto scrollbar-hide"
             >
-              <ComedyOutput
-                messages={messages}
-                streamingContent={currentStream}
-                streaming={streaming}
-              />
+              {error ? (
+                <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-2xl text-sm text-red-600">
+                  {error}
+                </div>
+              ) : (
+                <ComedyOutput
+                  messages={messages}
+                  streamingContent={currentStream}
+                  streaming={streaming}
+                />
+              )}
             </div>
 
             {!streaming && messages.length > 0 && (

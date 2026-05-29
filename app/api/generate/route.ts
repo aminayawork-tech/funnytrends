@@ -37,47 +37,58 @@ Write 8-10 jokes, each labeled with its style. Mix styles naturally. Examples:
 - Stay culturally current`;
 
 export async function POST(req: NextRequest) {
-  const { topic, messages, mode } = await req.json();
+  try {
+    const { topic, messages, mode } = await req.json();
 
-  // Build conversation history for chat mode
-  const conversationMessages: Array<{ role: "user" | "assistant"; content: string }> =
-    mode === "chat" && messages
-      ? messages
-      : [
-          {
-            role: "user",
-            content: `Generate comedy material for this trending topic: "${topic}"`,
-          },
-        ];
+    const conversationMessages: Array<{ role: "user" | "assistant"; content: string }> =
+      mode === "chat" && messages
+        ? messages
+        : [
+            {
+              role: "user",
+              content: `Generate comedy material for this trending topic: "${topic}"`,
+            },
+          ];
 
-  const stream = await client.messages.create({
-    model: "claude-sonnet-4-6",
-    max_tokens: 2048,
-    system: SYSTEM_PROMPT,
-    messages: conversationMessages,
-    stream: true,
-  });
+    const stream = await client.messages.create({
+      model: "claude-sonnet-4-6",
+      max_tokens: 2048,
+      system: SYSTEM_PROMPT,
+      messages: conversationMessages,
+      stream: true,
+    });
 
-  const encoder = new TextEncoder();
+    const encoder = new TextEncoder();
 
-  const readable = new ReadableStream({
-    async start(controller) {
-      for await (const event of stream) {
-        if (
-          event.type === "content_block_delta" &&
-          event.delta.type === "text_delta"
-        ) {
-          controller.enqueue(encoder.encode(event.delta.text));
+    const readable = new ReadableStream({
+      async start(controller) {
+        try {
+          for await (const event of stream) {
+            if (
+              event.type === "content_block_delta" &&
+              event.delta.type === "text_delta"
+            ) {
+              controller.enqueue(encoder.encode(event.delta.text));
+            }
+          }
+        } finally {
+          controller.close();
         }
-      }
-      controller.close();
-    },
-  });
+      },
+    });
 
-  return new Response(readable, {
-    headers: {
-      "Content-Type": "text/plain; charset=utf-8",
-      "Transfer-Encoding": "chunked",
-    },
-  });
+    return new Response(readable, {
+      headers: {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
+      },
+    });
+  } catch (err) {
+    console.error("[/api/generate]", err);
+    const msg = err instanceof Error ? err.message : "Generation failed";
+    return new Response(JSON.stringify({ error: msg }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
