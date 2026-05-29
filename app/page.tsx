@@ -21,7 +21,8 @@ export default function Home() {
   const [error, setError] = useState("");
   const outputRef = useRef<HTMLDivElement>(null);
 
-  const hasContent = messages.length > 0 || streaming;
+  // Include activeTopic so the output view stays visible even if streaming ends with an error
+  const hasContent = messages.length > 0 || streaming || !!activeTopic;
 
   const generate = async (userMessage: string, isNewTopic = false) => {
     if (streaming) return;
@@ -54,10 +55,13 @@ export default function Home() {
 
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
-        setError(data.error || `Error ${res.status}`);
+        setError(data.error || `Server error ${res.status}`);
         return;
       }
-      if (!res.body) return;
+      if (!res.body) {
+        setError("Empty response from server");
+        return;
+      }
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
@@ -71,6 +75,11 @@ export default function Home() {
         setCurrentStream(full);
       }
 
+      if (!full.trim()) {
+        setError("No content was generated. Please try again.");
+        return;
+      }
+
       const assistantMessage: Message = { role: "assistant", content: full };
       setMessages(
         isNewTopic
@@ -81,6 +90,8 @@ export default function Home() {
           : [...newMessages, assistantMessage]
       );
       setCurrentStream("");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Something went wrong. Please try again.");
     } finally {
       setStreaming(false);
     }
