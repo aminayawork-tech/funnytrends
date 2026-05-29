@@ -6,6 +6,7 @@ import TrendInput from "@/components/TrendInput";
 import ComedyOutput from "@/components/ComedyOutput";
 import ChatBar from "@/components/ChatBar";
 import QuickSuggestions from "@/components/QuickSuggestions";
+import HotTopics from "@/components/HotTopics";
 
 export type Message = {
   role: "user" | "assistant";
@@ -13,7 +14,6 @@ export type Message = {
 };
 
 export default function Home() {
-  const [topic, setTopic] = useState("");
   const [activeTopic, setActiveTopic] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [streaming, setStreaming] = useState(false);
@@ -81,7 +81,6 @@ export default function Home() {
 
   const handleTopicSubmit = (t: string) => {
     if (!t.trim()) return;
-    setTopic(t);
     generate(t, true);
   };
 
@@ -94,7 +93,6 @@ export default function Home() {
   };
 
   const handleReset = () => {
-    setTopic("");
     setActiveTopic("");
     setMessages([]);
     setCurrentStream("");
@@ -124,6 +122,7 @@ export default function Home() {
             </div>
             <TrendInput onSubmit={handleTopicSubmit} loading={streaming} />
             <HotTopics onSelect={handleTopicSubmit} />
+
           </div>
         ) : (
           <div className="flex-1 flex flex-col gap-3 pt-3">
@@ -165,32 +164,3 @@ export default function Home() {
   );
 }
 
-function HotTopics({ onSelect }: { onSelect: (t: string) => void }) {
-  const topics = [
-    "AI taking over jobs",
-    "Avocado toast economy",
-    "Doomscrolling at 3am",
-    "Gen Z vs Millennials",
-    "Self-checkout machines",
-    "Elon Musk tweets",
-  ];
-
-  return (
-    <div>
-      <p className="text-xs text-gray-400 text-center mb-3 uppercase tracking-wide font-medium">
-        Hot right now
-      </p>
-      <div className="flex flex-wrap gap-2 justify-center">
-        {topics.map((t) => (
-          <button
-            key={t}
-            onClick={() => onSelect(t)}
-            className="text-sm bg-white border border-gray-200 rounded-full px-4 py-2 text-gray-700 hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-[#FFF3E8] transition-all active:scale-95"
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-}
