@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const REFRESH_MS = 10 * 60 * 1000; // 10 minutes
+const REFRESH_MS = 10 * 60 * 1000;
 const DISPLAY_COUNT = 6;
 
 interface TrendsResponse {
@@ -26,13 +26,12 @@ export default function HotTopics({ onSelect }: HotTopicsProps) {
     try {
       const res = await fetch("/api/trends");
       const data: TrendsResponse = await res.json();
-      // Pick a random DISPLAY_COUNT slice so repeated refreshes show variety
       const shuffled = [...data.topics].sort(() => Math.random() - 0.5);
       setTopics(shuffled.slice(0, DISPLAY_COUNT));
       setFetchedAt(new Date(data.fetchedAt));
       setIsFallback(data.fallback ?? false);
     } catch {
-      // silently keep existing topics on network error
+      // keep existing topics on network error
     } finally {
       setLoading(false);
     }
@@ -48,11 +47,11 @@ export default function HotTopics({ onSelect }: HotTopicsProps) {
     <div>
       <div className="flex items-center justify-center gap-2 mb-3">
         <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-          {isFallback ? "Trending topics" : "🔴 Live from Google Trends"}
+          {isFallback ? "Trending topics" : "Live from Google Trends"}
         </p>
         {fetchedAt && (
           <span className="text-[10px] text-gray-300">
-            · updated {formatAge(fetchedAt)}
+            · {formatAge(fetchedAt)}
           </span>
         )}
         <button

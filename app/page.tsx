@@ -112,7 +112,6 @@ export default function Home() {
         {!hasContent ? (
           <div className="flex-1 flex flex-col justify-center gap-6 py-8">
             <div className="text-center">
-              <div className="text-5xl mb-3">🎤</div>
               <h2 className="text-2xl font-bold text-[#1A1A1A] mb-2">
                 What&apos;s trending?
               </h2>
@@ -127,8 +126,7 @@ export default function Home() {
         ) : (
           <div className="flex-1 flex flex-col gap-3 pt-3">
             <div className="flex items-center gap-2">
-              <div className="flex-1 flex items-center gap-2 bg-[#FFF3E8] border border-[#FFDDB8] rounded-full px-4 py-2">
-                <span className="text-lg">🔥</span>
+              <div className="flex-1 flex items-center bg-[#FFF3E8] border border-[#FFDDB8] rounded-full px-4 py-2">
                 <span className="font-semibold text-[#FF6B00] text-sm truncate">
                   {activeTopic}
                 </span>

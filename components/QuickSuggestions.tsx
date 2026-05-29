@@ -1,12 +1,16 @@
 "use client";
 
-const SUGGESTIONS = [
-  { label: "🌑 Darker", message: "Make it much darker and edgier" },
-  { label: "✨ Cleaner", message: "Give me a cleaner, family-friendly version" },
-  { label: "🎙️ 60-sec bit", message: "Turn the best jokes into a 60-second stand-up bit" },
-  { label: "🐦 Tweet thread", message: "Write this as a funny Twitter/X thread" },
-  { label: "😤 More roast", message: "Give me more savage roast-style jokes" },
-  { label: "🔄 New angles", message: "Come up with completely different angles" },
+import { useState, useRef, useEffect } from "react";
+
+const REFINEMENTS = [
+  { label: "Make it darker", message: "Make it much darker and edgier" },
+  { label: "Clean version", message: "Give me a cleaner, family-friendly version" },
+  { label: "60-second bit", message: "Turn the best jokes into a 60-second stand-up bit" },
+  { label: "Twitter thread", message: "Write this as a funny Twitter/X thread" },
+  { label: "More roast", message: "Give me more savage roast-style jokes" },
+  { label: "New angles", message: "Come up with completely different angles on this topic" },
+  { label: "Style of Chappelle", message: "Rewrite in the style of Dave Chappelle" },
+  { label: "Style of Mulaney", message: "Rewrite in the style of John Mulaney" },
 ];
 
 interface QuickSuggestionsProps {
@@ -14,19 +18,59 @@ interface QuickSuggestionsProps {
 }
 
 export default function QuickSuggestions({ onSelect }: QuickSuggestionsProps) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
   return (
-    <div className="overflow-x-auto scrollbar-hide -mx-1 px-1">
-      <div className="flex gap-2 pb-1" style={{ width: "max-content" }}>
-        {SUGGESTIONS.map((s) => (
-          <button
-            key={s.label}
-            onClick={() => onSelect(s.message)}
-            className="flex-shrink-0 text-xs bg-white border border-gray-200 rounded-full px-3 py-2 text-gray-600 hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-[#FFF3E8] transition-all active:scale-95 whitespace-nowrap"
-          >
-            {s.label}
-          </button>
-        ))}
-      </div>
+    <div className="relative" ref={containerRef}>
+      {open && (
+        <div className="absolute bottom-full left-0 right-0 mb-2 bg-white border border-gray-200 rounded-2xl shadow-lg overflow-hidden z-20 slide-up">
+          {REFINEMENTS.map((r) => (
+            <button
+              key={r.label}
+              onClick={() => {
+                onSelect(r.message);
+                setOpen(false);
+              }}
+              className="w-full text-left px-4 py-3 text-sm text-gray-700 hover:bg-[#FFF3E8] hover:text-[#FF6B00] border-b border-gray-50 last:border-0 transition-colors"
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between bg-white border border-gray-200 rounded-2xl px-4 py-3 text-sm text-gray-500 hover:border-[#FF6B00] hover:text-[#FF6B00] transition-colors"
+      >
+        <span>Refine material...</span>
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 14 14"
+          fill="none"
+          className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}
+        >
+          <path
+            d="M2 5l5 5 5-5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
     </div>
   );
 }

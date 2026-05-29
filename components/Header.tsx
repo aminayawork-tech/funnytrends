@@ -3,19 +3,14 @@ export default function Header({ onReset }: { onReset?: () => void }) {
     <header className="sticky top-0 z-10 bg-white/90 backdrop-blur-sm border-b border-gray-100 px-4 py-3 flex items-center justify-between">
       <button
         onClick={onReset}
-        className="flex items-center gap-2 group"
         disabled={!onReset}
+        className="group text-left"
       >
-        <div className="w-8 h-8 bg-[#FF6B00] rounded-lg flex items-center justify-center shadow-sm">
-          <span className="text-white text-sm font-bold">FT</span>
+        <div className="font-bold text-[#FF6B00] text-lg leading-tight group-hover:opacity-80 transition-opacity">
+          FunnyTrends
         </div>
-        <div>
-          <div className="font-bold text-[#1A1A1A] leading-tight text-sm group-hover:text-[#FF6B00] transition-colors">
-            FunnyTrends
-          </div>
-          <div className="text-[10px] text-gray-400 leading-tight">
-            Comedy at the speed of news
-          </div>
+        <div className="text-[10px] text-gray-400 leading-tight">
+          Comedy at the speed of news
         </div>
       </button>
 

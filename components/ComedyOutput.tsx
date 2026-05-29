@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect, useRef } from "react";
 import ReactMarkdown from "react-markdown";
 import type { Message } from "@/app/page";
 
@@ -37,20 +36,8 @@ function getJokeStyle(label: string) {
   return { bg: "#FFF3E8", text: "#FF6B00", border: "#FFDDB8" };
 }
 
-function parseJokeBlocks(text: string): Array<{ label: string; content: string } | string> {
-  const lines = text.split("\n");
-  const result: Array<{ label: string; content: string } | string> = [];
-
-  for (const line of lines) {
-    const boldMatch = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
-    if (boldMatch) {
-      result.push({ label: boldMatch[1], content: boldMatch[2] });
-    } else {
-      result.push(line);
-    }
-  }
-
-  return result;
+function stripEmoji(text: string) {
+  return text.replace(/\p{Emoji}/gu, "").trim();
 }
 
 function JokeCard({ label, content }: { label: string; content: string }) {
@@ -72,37 +59,46 @@ function JokeCard({ label, content }: { label: string; content: string }) {
 }
 
 function MarkdownContent({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
-  const inJokesSection = useRef(false);
-
+  // Split by ### headers — use a plain let variable, NOT useRef, so it resets on every render
   const sections = content.split(/(###[^\n]+)/);
+  let inJokesSection = false;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-1">
       {sections.map((section, i) => {
         if (section.startsWith("###")) {
-          inJokesSection.current = section.toLowerCase().includes("joke");
-          const emoji = section.match(/\p{Emoji}/u)?.[0] || "";
-          const title = section.replace(/###\s*/, "").replace(/\p{Emoji}/gu, "").trim();
+          // Strip emojis from header text before matching "jokes"
+          const cleanHeader = stripEmoji(section).toLowerCase();
+          inJokesSection = cleanHeader.includes("joke");
+          const title = stripEmoji(section.replace(/###\s*/, ""));
           return (
-            <div key={i} className="flex items-center gap-2 mt-4 mb-1">
-              {emoji && <span className="text-xl">{emoji}</span>}
-              <h3 className="font-bold text-[#1A1A1A] text-base">{title}</h3>
-            </div>
+            <h3
+              key={i}
+              className="font-bold text-[#1A1A1A] text-base mt-5 mb-2 pb-1 border-b border-gray-100"
+            >
+              {title}
+            </h3>
           );
         }
 
-        if (inJokesSection.current && section.trim()) {
-          const blocks = parseJokeBlocks(section);
-          return (
-            <div key={i}>
-              {blocks.map((block, j) => {
-                if (typeof block === "object") {
-                  return <JokeCard key={j} label={block.label} content={block.content} />;
-                }
-                return null;
-              })}
-            </div>
-          );
+        if (inJokesSection && section.trim()) {
+          const lines = section.split("\n");
+          const cards = lines
+            .map((line) => {
+              const m = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
+              return m ? { label: m[1], content: m[2] } : null;
+            })
+            .filter(Boolean) as Array<{ label: string; content: string }>;
+
+          if (cards.length > 0) {
+            return (
+              <div key={i}>
+                {cards.map((card, j) => (
+                  <JokeCard key={j} label={card.label} content={card.content} />
+                ))}
+              </div>
+            );
+          }
         }
 
         if (section.trim()) {
@@ -171,12 +167,11 @@ export default function ComedyOutput({
 
 function LoadingState() {
   return (
-    <div className="flex flex-col gap-3 py-4">
-      <div className="text-center mb-2">
-        <div className="text-3xl pulse-orange">🎤</div>
-        <p className="text-sm text-gray-500 mt-2">Crafting your material...</p>
-      </div>
-      {[80, 60, 90, 70].map((w, i) => (
+    <div className="flex flex-col gap-3 py-6">
+      <p className="text-sm text-gray-400 text-center pulse-orange">
+        Crafting your material...
+      </p>
+      {[80, 55, 90, 65, 75].map((w, i) => (
         <div
           key={i}
           className="h-3 bg-gray-100 rounded-full pulse-orange"
