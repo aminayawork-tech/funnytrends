@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useCallback } from "react";
 import type { Message } from "@/app/page";
 
 interface ComedyOutputProps {
@@ -35,77 +36,163 @@ function getJokeStyle(label: string) {
   return { bg: "#FFF3E8", text: "#FF6B00", border: "#FFDDB8" };
 }
 
-// Renders the raw text line-by-line — no section tracking, no refs, no state.
-function ContentRenderer({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
-  const lines = content.split("\n");
+function useCopy() {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
-  const elements = lines.map((line, i) => {
-    // Section header: ### Title
+  const copy = useCallback((key: string, text: string) => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    });
+  }, []);
+
+  return { copiedKey, copy };
+}
+
+function CopyButton({ id, text, copiedKey, onCopy }: {
+  id: string;
+  text: string;
+  copiedKey: string | null;
+  onCopy: (id: string, text: string) => void;
+}) {
+  const copied = copiedKey === id;
+  return (
+    <button
+      onClick={() => onCopy(id, text)}
+      className="flex-shrink-0 text-[10px] font-medium px-2 py-1 rounded-lg transition-all"
+      style={copied
+        ? { background: "#F0FFF4", color: "#15803D" }
+        : { background: "rgba(0,0,0,0.04)", color: "#9CA3AF" }
+      }
+      title="Copy"
+    >
+      {copied ? "Saved" : "Copy"}
+    </button>
+  );
+}
+
+type ParsedSection = {
+  title: string | null;
+  lines: string[];
+};
+
+function parseSections(content: string): ParsedSection[] {
+  const sections: ParsedSection[] = [];
+  let current: ParsedSection = { title: null, lines: [] };
+
+  for (const line of content.split("\n")) {
     if (/^###\s/.test(line)) {
-      const title = line.replace(/^###\s*/, "").trim();
-      if (!title) return null;
-      return (
-        <h3
-          key={i}
-          className="font-bold text-[#1A1A1A] text-base mt-5 mb-2 pb-1 border-b border-gray-100"
-        >
-          {title}
-        </h3>
-      );
+      if (current.title !== null || current.lines.some((l) => l.trim())) {
+        sections.push(current);
+      }
+      current = { title: line.replace(/^###\s*/, "").trim(), lines: [] };
+    } else {
+      current.lines.push(line);
     }
+  }
+  if (current.title !== null || current.lines.some((l) => l.trim())) {
+    sections.push(current);
+  }
+  return sections;
+}
 
-    // Joke card: **Label:** text
-    const jokeMatch = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
-    if (jokeMatch) {
-      const colors = getJokeStyle(jokeMatch[1]);
-      return (
-        <div
-          key={i}
-          className="rounded-xl border p-3 mb-2"
-          style={{ backgroundColor: colors.bg, borderColor: colors.border }}
-        >
-          <span
-            className="text-xs font-bold uppercase tracking-wide mb-1 block"
-            style={{ color: colors.text }}
-          >
-            {jokeMatch[1]}
-          </span>
-          <p className="text-[#1A1A1A] text-sm leading-relaxed">{jokeMatch[2]}</p>
-        </div>
-      );
-    }
+function sectionPlainText(section: ParsedSection): string {
+  const lines = section.lines
+    .filter((l) => !/^---+$/.test(l.trim()))
+    .map((l) => {
+      const jokeMatch = l.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
+      if (jokeMatch) return `${jokeMatch[1]}: ${jokeMatch[2]}`;
+      const bulletMatch = l.match(/^[-*]\s+(.+)/);
+      if (bulletMatch) return `• ${bulletMatch[1].replace(/^\*\*([^*]+)\*\*:?\s*/, "$1: ")}`;
+      return l;
+    })
+    .filter(Boolean);
 
-    // Bullet point: - text or * text
-    const bulletMatch = line.match(/^[-*]\s+(.+)/);
-    if (bulletMatch) {
-      // Strip any leading **bold** from bullet text (Next Moves uses **Bold:** desc)
-      const text = bulletMatch[1].replace(/^\*\*([^*]+)\*\*:?\s*/, "$1: ");
-      return (
-        <div key={i} className="flex items-start gap-2 text-sm text-gray-700 mb-1">
-          <span className="text-[#FF6B00] mt-0.5 flex-shrink-0 select-none">•</span>
-          <span>{text}</span>
-        </div>
-      );
-    }
+  return section.title ? `${section.title}\n\n${lines.join("\n")}` : lines.join("\n");
+}
 
-    // Horizontal rule — skip
-    if (/^---+$/.test(line.trim())) return null;
-
-    // Plain text (non-empty)
-    if (line.trim()) {
-      return (
-        <p key={i} className="text-sm text-gray-700 leading-relaxed mb-1">
-          {line}
-        </p>
-      );
-    }
-
-    return null;
-  });
+function ContentRenderer({ content, isStreaming }: { content: string; isStreaming?: boolean }) {
+  const { copiedKey, copy } = useCopy();
+  const sections = parseSections(content);
 
   return (
     <div className="pb-6">
-      {elements}
+      {sections.map((section, si) => (
+        <div key={si}>
+          {section.title && (
+            <div className="flex items-center justify-between gap-2 mt-5 mb-2 pb-1 border-b border-gray-100">
+              <h3 className="font-bold text-[#1A1A1A] text-base">{section.title}</h3>
+              {!isStreaming && (
+                <CopyButton
+                  id={`section-${si}`}
+                  text={sectionPlainText(section)}
+                  copiedKey={copiedKey}
+                  onCopy={copy}
+                />
+              )}
+            </div>
+          )}
+
+          {section.lines.map((line, li) => {
+            const jokeMatch = line.match(/^\*\*([^*]+)\*\*:\s*(.+)/);
+            if (jokeMatch) {
+              const colors = getJokeStyle(jokeMatch[1]);
+              const jokeKey = `joke-${si}-${li}`;
+              return (
+                <div
+                  key={li}
+                  className="rounded-xl border p-3 mb-2"
+                  style={{ backgroundColor: colors.bg, borderColor: colors.border }}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <span
+                        className="text-xs font-bold uppercase tracking-wide mb-1 block"
+                        style={{ color: colors.text }}
+                      >
+                        {jokeMatch[1]}
+                      </span>
+                      <p className="text-[#1A1A1A] text-sm leading-relaxed">{jokeMatch[2]}</p>
+                    </div>
+                    {!isStreaming && (
+                      <CopyButton
+                        id={jokeKey}
+                        text={`${jokeMatch[1]}: ${jokeMatch[2]}`}
+                        copiedKey={copiedKey}
+                        onCopy={copy}
+                      />
+                    )}
+                  </div>
+                </div>
+              );
+            }
+
+            const bulletMatch = line.match(/^[-*]\s+(.+)/);
+            if (bulletMatch) {
+              const text = bulletMatch[1].replace(/^\*\*([^*]+)\*\*:?\s*/, "$1: ");
+              return (
+                <div key={li} className="flex items-start gap-2 text-sm text-gray-700 mb-1">
+                  <span className="text-[#FF6B00] mt-0.5 flex-shrink-0 select-none">•</span>
+                  <span>{text}</span>
+                </div>
+              );
+            }
+
+            if (/^---+$/.test(line.trim())) return null;
+
+            if (line.trim()) {
+              return (
+                <p key={li} className="text-sm text-gray-700 leading-relaxed mb-1">
+                  {line}
+                </p>
+              );
+            }
+
+            return null;
+          })}
+        </div>
+      ))}
+
       {isStreaming && (
         <span className="inline-block w-0.5 h-4 bg-[#FF6B00] animate-pulse ml-0.5 align-middle" />
       )}

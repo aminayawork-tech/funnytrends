@@ -5,12 +5,14 @@ import { useState, useRef, useEffect } from "react";
 const REFINEMENTS = [
   { label: "Make it darker", message: "Make it much darker and edgier" },
   { label: "Clean version", message: "Give me a cleaner, family-friendly version" },
-  { label: "60-second bit", message: "Turn the best jokes into a 60-second stand-up bit" },
+  { label: "60-second bit", message: "Turn the best jokes into a tight 60-second stand-up bit" },
   { label: "Twitter thread", message: "Write this as a funny Twitter/X thread" },
   { label: "More roast", message: "Give me more savage roast-style jokes" },
   { label: "New angles", message: "Come up with completely different angles on this topic" },
-  { label: "Style of Chappelle", message: "Rewrite in the style of Dave Chappelle" },
-  { label: "Style of Mulaney", message: "Rewrite in the style of John Mulaney" },
+  { label: "Bill Burr style", message: "Rewrite in the style of Bill Burr — aggressive, ranty, blue-collar outrage, zero filter, calls out everyone including himself" },
+  { label: "Kat Williams style", message: "Rewrite in the style of Kat Williams — rapid-fire, street philosophy, conspiratorial energy, theatrical delivery, builds to explosive punchlines" },
+  { label: "Dave Chappelle style", message: "Rewrite in the style of Dave Chappelle — sharp social commentary, storytelling, unexpected twists" },
+  { label: "John Mulaney style", message: "Rewrite in the style of John Mulaney — clean, story-driven, self-deprecating, precise word choice" },
 ];
 
 interface QuickSuggestionsProps {

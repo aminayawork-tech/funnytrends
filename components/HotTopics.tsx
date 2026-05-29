@@ -3,12 +3,17 @@
 import { useState, useEffect, useCallback } from "react";
 
 const REFRESH_MS = 10 * 60 * 1000;
-const DISPLAY_COUNT = 6;
+const DISPLAY_COUNT = 8;
+
+interface TrendItem {
+  topic: string;
+  source: "google" | "x";
+}
 
 interface TrendsResponse {
-  topics: string[];
-  geo: string;
+  topics: TrendItem[];
   fetchedAt: string;
+  sources: { google: boolean; x: boolean };
   fallback?: boolean;
 }
 
@@ -17,10 +22,10 @@ interface HotTopicsProps {
 }
 
 export default function HotTopics({ onSelect }: HotTopicsProps) {
-  const [topics, setTopics] = useState<string[]>([]);
+  const [topics, setTopics] = useState<TrendItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchedAt, setFetchedAt] = useState<Date | null>(null);
-  const [isFallback, setIsFallback] = useState(false);
+  const [sources, setSources] = useState({ google: false, x: false });
 
   const fetchTrends = useCallback(async () => {
     try {
@@ -29,7 +34,7 @@ export default function HotTopics({ onSelect }: HotTopicsProps) {
       const shuffled = [...data.topics].sort(() => Math.random() - 0.5);
       setTopics(shuffled.slice(0, DISPLAY_COUNT));
       setFetchedAt(new Date(data.fetchedAt));
-      setIsFallback(data.fallback ?? false);
+      setSources(data.sources ?? { google: false, x: false });
     } catch {
       // keep existing topics on network error
     } finally {
@@ -43,21 +48,28 @@ export default function HotTopics({ onSelect }: HotTopicsProps) {
     return () => clearInterval(id);
   }, [fetchTrends]);
 
+  const sourceLabel = sources.google && sources.x
+    ? "Google + X trends"
+    : sources.google
+    ? "Google Trends"
+    : sources.x
+    ? "X Trends"
+    : "Trending topics";
+
   return (
     <div>
       <div className="flex items-center justify-center gap-2 mb-3">
+        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
         <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
-          {isFallback ? "Trending topics" : "Live from Google Trends"}
+          {sourceLabel}
         </p>
         {fetchedAt && (
-          <span className="text-[10px] text-gray-300">
-            · {formatAge(fetchedAt)}
-          </span>
+          <span className="text-[10px] text-gray-300">· {formatAge(fetchedAt)}</span>
         )}
         <button
           onClick={fetchTrends}
           className="text-[10px] text-gray-300 hover:text-[#FF6B00] transition-colors"
-          title="Refresh trends"
+          title="Refresh"
         >
           ↻
         </button>
@@ -67,13 +79,18 @@ export default function HotTopics({ onSelect }: HotTopicsProps) {
         <SkeletonChips />
       ) : (
         <div className="flex flex-wrap gap-2 justify-center">
-          {topics.map((t) => (
+          {topics.map((item) => (
             <button
-              key={t}
-              onClick={() => onSelect(t)}
-              className="text-sm bg-white border border-gray-200 rounded-full px-4 py-2 text-gray-700 hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-[#FFF3E8] transition-all active:scale-95"
+              key={item.topic}
+              onClick={() => onSelect(item.topic)}
+              className="flex items-center gap-1.5 text-sm bg-white border border-gray-200 rounded-full pl-3 pr-3 py-2 text-gray-700 hover:border-[#FF6B00] hover:text-[#FF6B00] hover:bg-[#FFF3E8] transition-all active:scale-95"
             >
-              {t}
+              <span
+                className="text-[9px] font-bold uppercase tracking-wide opacity-40"
+              >
+                {item.source === "x" ? "X" : "G"}
+              </span>
+              {item.topic}
             </button>
           ))}
         </div>
@@ -83,7 +100,7 @@ export default function HotTopics({ onSelect }: HotTopicsProps) {
 }
 
 function SkeletonChips() {
-  const widths = [80, 110, 95, 120, 85, 100];
+  const widths = [80, 110, 95, 120, 85, 100, 90, 115];
   return (
     <div className="flex flex-wrap gap-2 justify-center">
       {widths.map((w, i) => (
